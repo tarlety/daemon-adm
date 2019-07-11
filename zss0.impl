@@ -1,0 +1,164 @@
+#!/bin/bash
+
+# zss interface
+
+case $1 in
+	"app")
+		PROJECTNAME=zerus
+		APPNAME=daemon-adm
+		APPVERSION=0.1.4
+		;;
+	"config")
+		CONFIGKEYS="nodeadm jumper edges vip logserv if xport sport"
+		declare -A CONFIG_DESCRIPTIONS
+		CONFIG_DESCRIPTIONS=( \
+			["nodeadm"]="the ctrl command to control all nodes." \
+			["jumper"]="the jumper server." \
+			["edges"]="the edge nodes to maintain vip." \
+			["vip"]="the virtual public service IP." \
+			["logserv"]="the log server to collect all logs." \
+			["if"]="the default if name." \
+			["xport"]="the public exposed port." \
+			["sport"]="the secure hidden ssh port." \
+			)
+
+		DEFAULT_NODEADM=../node_adm
+		DEFAULT_JUMPER="u1"
+		DEFAULT_EDGES="u2
+		u3
+		u4
+		u5"
+		DEFAULT_VIP=10.13.13.113
+		DEFAULT_LOGSERV="u1"
+		DEFAULT_IF="eth0"
+		DEFAULT_XPORT=2222
+		DEFAULT_SPORT=22
+		;;
+	"vars")
+		TG_BOTTOKEN_FILE=${SECRET}/tg_bottoken.enc
+		TG_CHATID_FILE=${SECRET}/tg_chatid.enc
+		KEEPALIVE_PASSWORD_FILE=${SECRET}/keepalive_password.enc
+		;;
+	"requirement")
+		echo - node-adm: $(${NODEADM}/zss0 version)
+		;;
+	"secret-create")
+		read -p "Please enter Telegram bot-token:" TG_BOTTOKEN
+		echo "${TG_BOTTOKEN}" | gpg -ear ${GPGKEY} -o ${TG_BOTTOKEN_FILE}
+		read -p "Please enter Telegram chatid:" TG_CHATID
+		echo "${TG_CHATID}" | gpg -ear ${GPGKEY} -o ${TG_CHATID_FILE}
+		gpg --gen-random --armor 2 32 | cut -c1-8 | gpg -ear ${GPGKEY} -o ${KEEPALIVE_PASSWORD_FILE}
+		;;
+	"state-data-save")
+		;;
+	"state-secret-load-post")
+		;;
+	"state-data-load")
+		;;
+	# AppImplementing Section: commands
+	#------------------------------------------------------------------------------
+	"command")
+		shift
+		TG_BOTTOKEN="$(gpg -d ${TG_BOTTOKEN_FILE})"
+		TG_CHATID="$(gpg -d ${TG_CHATID_FILE})"
+		KEEPALIVE_PASSWORD="$(gpg -d ${KEEPALIVE_PASSWORD_FILE})"
+		case $1 in
+			"jumper")
+				shift
+				cd ./jumper
+				case $1 in
+				"up")
+					./jumper ${NODEADM} ${JUMPER} ${IF} ${XPORT} ${SPORT} up
+					;;
+				"down")
+					./jumper ${NODEADM} ${JUMPER} ${IF} ${XPORT} ${SPORT} down
+					;;
+				esac
+				cd - >& /dev/null
+				;;
+			"keepalive")
+				shift
+				cd ./keepalive
+				case $1 in
+				"up")
+					./keepalive ${NODEADM} "${EDGES}" "${VIP}" "${IF}" "${KEEPALIVE_PASSWORD}" up
+					;;
+				"down")
+					./keepalive ${NODEADM} "${EDGES}" "" "" "" down
+					;;
+				esac
+				cd - >& /dev/null
+				;;
+			"monitoring")
+				shift
+				ACTION=$1
+				shift
+				cd "${NODEADM}"
+				NODES="${*:-$(./zss0 env | grep '^- NODES: ' | cut -d: -f2)}"
+				cd - >& /dev/null
+				cd ./monitoring/
+				for NODE in ${NODES}
+				do
+					case ${ACTION} in
+					"up")
+						./node ${NODEADM} "${NODE}" "${TG_BOTTOKEN}" "${TG_CHATID}" up
+						;;
+					"down")
+						./node ${NODEADM} "${NODE}" "" "" down
+						;;
+					esac
+				done
+				cd - >& /dev/null
+				;;
+			"rsyslog-serv")
+				shift
+				case $1 in
+				"up")
+					./rsyslog/server "${NODEADM}/zss0 exec" "${LOGSERV}" up
+					;;
+				"down")
+					./rsyslog/server "${NODEADM}/zss0 exec" "${LOGSERV}" down
+					;;
+				esac
+				;;
+			"rsyslog-clnt")
+				shift
+				ACTION=$1
+				shift
+				cd "${NODEADM}"
+				NODES="${*:-$(./zss0 nodes)}"
+				cd - >& /dev/null
+				for NODE in ${NODES}
+				do
+					[ "${LOGSERV}" != "${NODE}" ] && \
+					case ${ACTION} in
+					"up")
+						./rsyslog/client "${NODEADM}/zss0 exec" "${LOGSERV}" "${NODE}" up
+						;;
+					"down")
+						./rsyslog/client "${NODEADM}/zss0 exec" "${LOGSERV}" "${NODE}" down
+						;;
+					esac
+				done
+				;;
+			"apply")
+				shift
+
+				$0 jumper up
+				$0 keepalive up
+				#$0 monitoring up
+				#$0 rsyslog-serv up
+				#$0 rsyslog-clnt up
+				;;
+			esac
+		;;
+	#------------------------------------------------------------------------------
+	"usage")
+		echo $(basename $0) "jumper [up/down]"
+		echo $(basename $0) "keepalive [up/down]"
+		echo $(basename $0) "monitoring [up/down]"
+		echo $(basename $0) "rsyslog-serv [up/down]"
+		echo $(basename $0) "rsyslog-clnt [up/down]"
+		;;
+esac
+

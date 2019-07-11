@@ -1,0 +1,36 @@
+#!/bin/bash
+
+EDGES=$1
+VIP=$2
+IF=$3
+PASSWORD=$4
+
+cat <<EOF
+! Configuration File for keepalived
+
+global_defs {
+  default_interface ${IF}
+}
+
+vrrp_instance VI_1 {
+  interface ${IF}
+
+  state BACKUP
+  virtual_router_id 66
+  priority 150
+  nopreempt
+
+  unicast_peer {
+    ${EDGES}
+  }
+
+  virtual_ipaddress {
+    ${VIP}
+  }
+
+  authentication {
+    auth_type PASS
+    auth_pass ${PASSWORD}
+  }
+}
+EOF

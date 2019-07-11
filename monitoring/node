@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# node-adm module v0.1.0
+# ARGUMENTS:
+#  $1 NODEADM	the path of node-adm
+#  $2 NODE	the node to monitor
+#  $3 TGBOTTOKEN	the tg secret
+#  $4 TGCHATID	the tg secret
+#  $5 ACTION    up or down
+VERSION=0.1.0
+
+HC='\033[0;93m'
+NC='\033[0m'
+
+# module:
+MODULENAME=monitoring/node
+
+# arguments:
+NODEADM=${1:-../node-adm}
+NODE=${2:ws}
+TGBOTTOKEN=${3:-}
+TGCHATID=${4:-}
+ACTION=${5:-}
+
+echo -e "${HC}=========================================================================${NC}"
+echo -e "${HC}NODE-ADM MODULE: ${MODULENAME} ${VERSION}${NC}"
+echo NODEADM: ${NODEADM}
+echo NODE: ${NODE}
+echo TGBOTTOKEN: ${TGBOTTOKEN}
+echo TGCHATID: ${TGCHATID}
+echo ACTION: ${ACTION}
+echo
+
+cd ${NODEADM}
+case ${ACTION} in
+	"up")
+		# bring up netdata
+		./zss0 exec ${NODE} "
+			cd ~/docker-apps/monitoring/netdata ;
+			TGBOTTOKEN=${TGBOTTOKEN} TGCHATID=${TGCHATID} ./ws up ;
+			"
+		# wait for /etc/netdata/health_alarm_notify.conf ready
+		while ! ./zss0 exec ${NODE} "docker exec netdata su -s /bin/bash root -c 'chgrp netdata /etc/netdata/health_alarm_notify.conf' ;"
+		do
+			sleep 1
+		done
+		# issued a test notify
+		./zss0 exec ${NODE} "
+			docker exec netdata su -s /bin/bash netdata -c '/usr/libexec/netdata/plugins.d/alarm-notify.sh test' ;
+			"
+		;;
+	"down")
+		./zss0 exec ${NODE} "
+			cd ~/docker-apps/monitoring/netdata ;
+			./ws down;
+			"
+		;;
+esac
+cd - >& /dev/null
+

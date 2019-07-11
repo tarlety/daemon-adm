@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# node-adm module v0.1.0
+# ARGUMENTS:
+#  $1 NODEADM	the path of node-adm
+#  $2 EDGES	the edges of hosts, to maintain VIP
+#  $3 VIP	the exposing VIP to service
+#  $4 IF	the default if of nodes
+#  $5 PASSWORD	the keepalive password
+#  $6 ACTION    up or down
+VERSION=0.1.0
+
+HC='\033[0;93m'
+NC='\033[0m'
+
+# module:
+MODULENAME=keepalive/keepalive
+
+# arguments:
+NODEADM=${1:-../node-adm}
+EDGES=${2:-}
+VIP=${3:-}
+IF=${4:-}
+PASSWORD=${5:-}
+ACTION=${6:-}
+
+echo -e "${HC}=========================================================================${NC}"
+echo -e "${HC}NODE-ADM MODULE: ${MODULENAME} ${VERSION}${NC}"
+echo NODEADM: ${NODEADM}
+echo EDGES: ${EDGES}
+echo VIP: ${VIP}
+echo IF: ${IF}
+echo PASSWORD: ${PASSWORD}
+echo ACTION: ${ACTION}
+echo
+
+CONF=$(./keepalived.conf.template "${EDGES}" "${VIP}" "${IF}" "${PASSWORD}")
+
+cd ${NODEADM}
+case ${ACTION} in
+	"up")
+		for NODE in ${EDGES}
+		do
+			./zss0 exec ${NODE} "
+				sudo sed -i -e 's/^#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf ;
+				sudo sysctl -p ;
+				sudo apt install keepalived -y ;
+				"
+			echo "${CONF}" | ./zss0 exec ${NODE} "sudo -n tee /etc/keepalived/keepalived.conf"
+			./zss0 exec ${NODE} "
+				sudo systemctl stop keepalived ;
+				sudo systemctl start keepalived ;
+				"
+		done
+		;;
+	"down")
+		for NODE in ${EDGES}
+		do
+			${NODECTL} ${NODE} "
+				sudo systemctl stop keepalived ;
+				"
+		done
+		;;
+esac
+cd - >& /dev/null

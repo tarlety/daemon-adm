@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# node-adm module v0.1.0
+# ARGUMENTS:
+#  $1 NODECTL	the command to control node.
+#  $2 SERVER	the rsyslog server
+#  $3 ACTION    up or down
+VERSION=0.1.0
+
+HC='\033[0;93m'
+NC='\033[0m'
+
+# module:
+MODULENAME=rsyslog/server
+
+# arguments:
+NODECTL=${1:-ws ssh}
+SERVER=${2:-ws}
+ACTION=${3:-up}
+
+echo -e "${HC}=========================================================================${NC}"
+echo -e "${HC}NODE-ADM MODULE: ${MODULENAME} ${VERSION}${NC}"
+echo NODECTL: ${NODECTL}
+echo SERVER: ${SERVER}
+echo ACTION: ${ACTION}
+echo
+
+case ${ACTION} in
+	"up")
+		cat << EOF | ${NODECTL} ${SERVER} "sudo tee /etc/rsyslog.d/server.conf"
+# provides UDP syslog reception
+module(load="imudp")
+input(type="imudp" port="514")
+EOF
+		${NODECTL} ${SERVER} "
+			sudo systemctl restart syslog ;
+			sudo sed -i -e 's/^\/usr\/sbin\/logwatch --output mail$/\/usr\/sbin\/logwatch --output mail --hostformat split/' /etc/cron.daily/00logwatch ;
+			"
+		;;
+	"down")
+		${NODECTL} ${SERVER} "
+			sudo rm -f /etc/rsyslog.d/server.conf ;
+			sudo systemctl restart syslog ;
+			sudo sed -i -e 's/^\/usr\/sbin\/logwatch --output mail --hostformat split$/\/usr\/sbin\/logwatch --output mail/' /etc/cron.daily/00logwatch ;
+			"
+		;;
+esac
+

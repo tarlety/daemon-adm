@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# node-adm module v0.1.0
+# ARGUMENTS:
+#  $1 NODEADM	the path of node-adm
+#  $2 JUMPER	the jumper server
+#  $3 IF	the default if name
+#  $4 XPORT	the public exposed port
+#  $5 SPORT	the secure hidden ssh port
+#  $6 ACTION    up or down
+VERSION=0.1.0
+
+HC='\033[0;93m'
+NC='\033[0m'
+
+# module:
+MODULENAME=jumper/jumper
+
+# arguments:
+NODEADM=${1:-../node-adm}
+JUMPER=${2:-ws}
+IF=${3:-eth0}
+XPORT=${4:-2222}
+SPORT=${5:-22}
+ACTION=${6:-}
+
+echo -e "${HC}=========================================================================${NC}"
+echo -e "${HC}NODE-ADM MODULE: ${MODULENAME} ${VERSION}${NC}"
+echo NODEADM: ${NODEADM}
+echo JUMPER: ${JUMPER}
+echo IF: ${IF}
+echo XPORT: ${XPORT}
+echo SPORT: ${SPORT}
+echo ACTION: ${ACTION}
+echo
+
+cd ${NODEADM}
+case ${ACTION} in
+	"up")
+		./zss0 exec ${JUMPER} "
+			sudo iptables -t nat -A PREROUTING -i ${IF} -p tcp --dport ${XPORT} -j REDIRECT --to-port ${SPORT} -m comment --comment jumper
+			"
+		;;
+	"down")
+		./zss0 exec ${JUMPER} "
+			sudo iptables -t nat -D PREROUTING -i ${IF} -p tcp --dport ${XPORT} -j REDIRECT --to-port ${SPORT} -m comment --comment jumper
+			"
+		;;
+esac
+cd - >& /dev/null
