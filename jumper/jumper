@@ -38,12 +38,14 @@ cd ${NODEADM}
 case ${ACTION} in
 	"up")
 		./zss0 exec ${JUMPER} "
-			sudo iptables -t nat -A PREROUTING -i ${IF} -p tcp --dport ${XPORT} -j REDIRECT --to-port ${SPORT} -m comment --comment jumper
+			sudo iptables -t nat -I PREROUTING -i ${IF} -p tcp --dport ${XPORT} -j REDIRECT --to-port ${SPORT} -m comment --comment jumper ;
+			echo sudo iptables -t nat -I PREROUTING -i ${IF} -p tcp --dport ${XPORT} -j REDIRECT --to-port ${SPORT} -m comment --comment jumper > ~/jumper ;
 			"
 		;;
 	"down")
 		./zss0 exec ${JUMPER} "
-			sudo iptables -t nat -D PREROUTING -i ${IF} -p tcp --dport ${XPORT} -j REDIRECT --to-port ${SPORT} -m comment --comment jumper
+			sudo iptables -t nat -D PREROUTING -i ${IF} -p tcp --dport ${XPORT} -j REDIRECT --to-port ${SPORT} -m comment --comment jumper ;
+			rm ~/jumper ;
 			"
 		;;
 esac

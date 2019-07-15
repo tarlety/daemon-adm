@@ -6,7 +6,7 @@ case $1 in
 	"app")
 		PROJECTNAME=zerus
 		APPNAME=daemon-adm
-		APPVERSION=0.1.4
+		APPVERSION=0.1.5
 		;;
 	"config")
 		CONFIGKEYS="nodeadm jumper edges vip logserv if xport sport"
