@@ -9,17 +9,14 @@ case $1 in
 		APPVERSION=0.1.5
 		;;
 	"config")
-		CONFIGKEYS="nodeadm jumper edges vip logserv if xport sport"
+		CONFIGKEYS="nodeadm edges vip logserv if"
 		declare -A CONFIG_DESCRIPTIONS
 		CONFIG_DESCRIPTIONS=( \
 			["nodeadm"]="the ctrl command to control all nodes." \
-			["jumper"]="the jumper server." \
 			["edges"]="the edge nodes to maintain vip." \
 			["vip"]="the virtual public service IP." \
 			["logserv"]="the log server to collect all logs." \
 			["if"]="the default if name." \
-			["xport"]="the public exposed port." \
-			["sport"]="the secure hidden ssh port." \
 			)
 
 		DEFAULT_NODEADM=../node_adm
@@ -31,8 +28,6 @@ case $1 in
 		DEFAULT_VIP=10.13.13.113
 		DEFAULT_LOGSERV="u1"
 		DEFAULT_IF="eth0"
-		DEFAULT_XPORT=2222
-		DEFAULT_SPORT=22
 		;;
 	"vars")
 		TG_BOTTOKEN_FILE=${SECRET}/tg_bottoken.enc
@@ -63,19 +58,6 @@ case $1 in
 		TG_CHATID="$(gpg -d ${TG_CHATID_FILE})"
 		KEEPALIVE_PASSWORD="$(gpg -d ${KEEPALIVE_PASSWORD_FILE})"
 		case $1 in
-			"jumper")
-				shift
-				cd ./jumper
-				case $1 in
-				"up")
-					./jumper ${NODEADM} ${JUMPER} ${IF} ${XPORT} ${SPORT} up
-					;;
-				"down")
-					./jumper ${NODEADM} ${JUMPER} ${IF} ${XPORT} ${SPORT} down
-					;;
-				esac
-				cd - >& /dev/null
-				;;
 			"keepalive")
 				shift
 				cd ./keepalive
@@ -110,55 +92,18 @@ case $1 in
 				done
 				cd - >& /dev/null
 				;;
-			"rsyslog-serv")
-				shift
-				case $1 in
-				"up")
-					./rsyslog/server "${NODEADM}/zss0 exec" "${LOGSERV}" up
-					;;
-				"down")
-					./rsyslog/server "${NODEADM}/zss0 exec" "${LOGSERV}" down
-					;;
-				esac
-				;;
-			"rsyslog-clnt")
-				shift
-				ACTION=$1
-				shift
-				cd "${NODEADM}"
-				NODES="${*:-$(./zss0 nodes)}"
-				cd - >& /dev/null
-				for NODE in ${NODES}
-				do
-					[ "${LOGSERV}" != "${NODE}" ] && \
-					case ${ACTION} in
-					"up")
-						./rsyslog/client "${NODEADM}/zss0 exec" "${LOGSERV}" "${NODE}" up
-						;;
-					"down")
-						./rsyslog/client "${NODEADM}/zss0 exec" "${LOGSERV}" "${NODE}" down
-						;;
-					esac
-				done
-				;;
 			"apply")
 				shift
 
-				#$0 jumper up
 				$0 keepalive up
 				$0 monitoring up
-				#$0 rsyslog-serv up
-				#$0 rsyslog-clnt up
 				;;
 			esac
 		;;
 	#------------------------------------------------------------------------------
 	"usage")
-		echo $(basename $0) "jumper [up/down]"
 		echo $(basename $0) "keepalive [up/down]"
 		echo $(basename $0) "monitoring [up/down]"
-		echo $(basename $0) "rsyslog-serv [up/down]"
-		echo $(basename $0) "rsyslog-clnt [up/down]"
 		;;
 esac
 
