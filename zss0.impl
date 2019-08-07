@@ -101,10 +101,10 @@ case $1 in
 				do
 					case ${ACTION} in
 					"up")
-						./node ${NODEADM} "${NODE}" "${TG_BOTTOKEN}" "${TG_CHATID}" up
+						./node ${NODEADM} "${NODE}" "${LOGSERV}" "${TG_BOTTOKEN}" "${TG_CHATID}" up
 						;;
 					"down")
-						./node ${NODEADM} "${NODE}" "" "" down
+						./node ${NODEADM} "${NODE}" "${LOGSERV}" "${TG_BOTTOKEN}" "${TG_CHATID}" down
 						;;
 					esac
 				done
@@ -144,9 +144,9 @@ case $1 in
 			"apply")
 				shift
 
-				$0 jumper up
+				#$0 jumper up
 				$0 keepalive up
-				#$0 monitoring up
+				$0 monitoring up
 				#$0 rsyslog-serv up
 				#$0 rsyslog-clnt up
 				;;

@@ -4,9 +4,10 @@
 # ARGUMENTS:
 #  $1 NODEADM	the path of node-adm
 #  $2 NODE	the node to monitor
-#  $3 TGBOTTOKEN	the tg secret
-#  $4 TGCHATID	the tg secret
-#  $5 ACTION    up or down
+#  $3 COLLECTOR	metrics collector
+#  $4 TGBOTTOKEN	the tg secret
+#  $5 TGCHATID	the tg secret
+#  $6 ACTION    up or down
 VERSION=0.1.0
 
 HC='\033[0;93m'
@@ -18,14 +19,16 @@ MODULENAME=monitoring/node
 # arguments:
 NODEADM=${1:-../node-adm}
 NODE=${2:ws}
-TGBOTTOKEN=${3:-}
-TGCHATID=${4:-}
-ACTION=${5:-}
+COLLECTOR=${3:ws}
+TGBOTTOKEN=${4:-}
+TGCHATID=${5:-}
+ACTION=${6:-}
 
 echo -e "${HC}=========================================================================${NC}"
 echo -e "${HC}NODE-ADM MODULE: ${MODULENAME} ${VERSION}${NC}"
 echo NODEADM: ${NODEADM}
 echo NODE: ${NODE}
+echo COLLECTOR: ${COLLECTOR}
 echo TGBOTTOKEN: ${TGBOTTOKEN}
 echo TGCHATID: ${TGCHATID}
 echo ACTION: ${ACTION}
@@ -44,15 +47,25 @@ case ${ACTION} in
 		do
 			sleep 1
 		done
+		# install packet routing
+		./zss0 exec ${NODE} "
+			sudo sysctl -w net.ipv4.conf.all.route_localnet=1 ;
+			sudo iptables -t nat -I PREROUTING -p tcp --dport 19999 -j DNAT --to 127.0.0.1:19999 -m comment --comment monitoring ;
+			sudo ufw allow in from $(dig +short ${COLLECTOR}) to any port 19999 comment 'monitoring' ;
+			"
 		# issued a test notify
 		./zss0 exec ${NODE} "
 			docker exec netdata su -s /bin/bash netdata -c '/usr/libexec/netdata/plugins.d/alarm-notify.sh test' ;
 			"
 		;;
 	"down")
+		RULENUM=$(./zss0 exec ${NODE} "sudo ufw status numbered" | grep monitoring | cut -d']' -f1 | cut -d'[' -f2)
 		./zss0 exec ${NODE} "
+			[ ! -z "${RULENUM}" ] && echo y | sudo ufw delete ${RULENUM} ;
+			sudo iptables -t nat -D PREROUTING -p tcp --dport 19999 -j DNAT --to 127.0.0.1:19999 -m comment --comment monitoring ;
+			sudo sysctl -w net.ipv4.conf.all.route_localnet=0 ;
 			cd ~/docker-apps/monitoring/netdata ;
-			./ws down;
+			TGBOTTOKEN=${TGBOTTOKEN} TGCHATID=${TGCHATID} ./ws down ;
 			"
 		;;
 esac
