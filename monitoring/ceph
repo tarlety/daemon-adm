@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# node-adm module v0.1.0
+# ARGUMENTS:
+#  $1 NODEADM	the path of node-adm
+#  $2 NODE	the node to monitor
+#  $3 COLLECTOR	metrics collector
+#  $4 ACTION    up or down
+VERSION=0.1.0
+
+HC='\033[0;93m'
+NC='\033[0m'
+
+# module:
+MODULENAME=monitoring/ceph
+
+# arguments:
+NODEADM=${1:-../node-adm}
+NODE=${2:ws}
+COLLECTOR=${3:ws}
+ACTION=${4:-}
+
+echo -e "${HC}=========================================================================${NC}"
+echo -e "${HC}NODE-ADM MODULE: ${MODULENAME} ${VERSION}${NC}"
+echo NODEADM: ${NODEADM}
+echo NODE: ${NODE}
+echo COLLECTOR: ${COLLECTOR}
+echo ACTION: ${ACTION}
+echo
+
+cd ${NODEADM}
+case ${ACTION} in
+	"up")
+		# bring up ceph mgr prometheus plugin
+		./zss0 exec ${NODE} "
+			docker exec mgr ceph mgr module enable prometheus ;
+			sudo ufw allow in from $(dig +short ${COLLECTOR}) to any port 9283 comment 'monitoring-ceph' ;
+			"
+		;;
+	"down")
+		RULENUM=$(./zss0 exec ${NODE} "sudo ufw status numbered" | grep 'monitoring-ceph' | cut -d']' -f1 | cut -d'[' -f2)
+		./zss0 exec ${NODE} "
+			[ ! -z "${RULENUM}" ] && echo y | sudo ufw delete ${RULENUM} ;
+			docker exec mgr ceph mgr module disable prometheus ;
+			"
+		;;
+esac
+cd - >& /dev/null
+
