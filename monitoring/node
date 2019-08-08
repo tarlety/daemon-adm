@@ -49,9 +49,7 @@ case ${ACTION} in
 		done
 		# install packet routing
 		./zss0 exec ${NODE} "
-			sudo sysctl -w net.ipv4.conf.all.route_localnet=1 ;
-			sudo iptables -t nat -I PREROUTING -p tcp --dport 19999 -j DNAT --to 127.0.0.1:19999 -m comment --comment monitoring ;
-			sudo ufw allow in from $(dig +short ${COLLECTOR}) to any port 19999 comment 'monitoring' ;
+			sudo ufw allow in from $(dig +short ${COLLECTOR}) to any port 19999 comment 'monitoring-netdata' ;
 			"
 		# issued a test notify
 		./zss0 exec ${NODE} "
@@ -59,11 +57,9 @@ case ${ACTION} in
 			"
 		;;
 	"down")
-		RULENUM=$(./zss0 exec ${NODE} "sudo ufw status numbered" | grep monitoring | cut -d']' -f1 | cut -d'[' -f2)
+		RULENUM=$(./zss0 exec ${NODE} "sudo ufw status numbered" | grep 'monitoring-netdata' | cut -d']' -f1 | cut -d'[' -f2)
 		./zss0 exec ${NODE} "
 			[ ! -z "${RULENUM}" ] && echo y | sudo ufw delete ${RULENUM} ;
-			sudo iptables -t nat -D PREROUTING -p tcp --dport 19999 -j DNAT --to 127.0.0.1:19999 -m comment --comment monitoring ;
-			sudo sysctl -w net.ipv4.conf.all.route_localnet=0 ;
 			cd ~/docker-apps/monitoring/netdata ;
 			TGBOTTOKEN=${TGBOTTOKEN} TGCHATID=${TGCHATID} ./ws down ;
 			"
