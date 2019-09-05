@@ -21,7 +21,14 @@ vrrp_instance VI_1 {
   nopreempt
 
   unicast_peer {
-    ${EDGES}
+EOF
+
+for EDGE in ${EDGES}
+do
+	echo "    ${EDGE}"
+done
+
+cat <<EOF
   }
 
   virtual_ipaddress {
