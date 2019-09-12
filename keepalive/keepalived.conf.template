@@ -1,9 +1,10 @@
 #!/bin/bash
 
-EDGES=$1
-VIP=$2
-IF=$3
-PASSWORD=$4
+NODE=$1
+EDGES=$2
+VIP=$3
+IF=$4
+PASSWORD=$5
 
 cat <<EOF
 ! Configuration File for keepalived
@@ -15,15 +16,15 @@ global_defs {
 vrrp_instance VI_1 {
   interface ${IF}
 
-  state BACKUP
+  state MASTER
   virtual_router_id 66
-  priority 150
+  priority $(echo ${NODE} | cut -d. -f4)
   nopreempt
 
   unicast_peer {
 EOF
 
-for EDGE in ${EDGES}
+for EDGE in $(echo ${EDGES} | sed "s/${NODE}//g")
 do
 	echo "    ${EDGE}"
 done

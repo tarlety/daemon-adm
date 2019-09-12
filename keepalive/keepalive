@@ -34,13 +34,13 @@ echo PASSWORD: ${PASSWORD}
 echo ACTION: ${ACTION}
 echo
 
-CONF=$(./keepalived.conf.template "${EDGES}" "${VIP}" "${IF}" "${PASSWORD}")
-
-cd ${NODEADM}
 case ${ACTION} in
 	"up")
 		for NODE in ${EDGES}
 		do
+			CONF=$(./keepalived.conf.template "${NODE}" "${EDGES}" "${VIP}" "${IF}" "${PASSWORD}")
+
+			cd ${NODEADM}
 			./zss0 exec ${NODE} "
 				sudo sed -i -e 's/^#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf ;
 				sudo sysctl -p ;
@@ -51,15 +51,17 @@ case ${ACTION} in
 				sudo systemctl stop keepalived ;
 				sudo systemctl start keepalived ;
 				"
+			cd - >& /dev/null
 		done
 		;;
 	"down")
 		for NODE in ${EDGES}
 		do
+			cd ${NODEADM}
 			${NODECTL} ${NODE} "
 				sudo systemctl stop keepalived ;
 				"
+			cd - >& /dev/null
 		done
 		;;
 esac
-cd - >& /dev/null
