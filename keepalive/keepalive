@@ -58,7 +58,7 @@ case ${ACTION} in
 		for NODE in ${EDGES}
 		do
 			cd ${NODEADM}
-			${NODECTL} ${NODE} "
+			./zss0 exec ${NODE} "
 				sudo systemctl stop keepalived ;
 				"
 			cd - >& /dev/null
