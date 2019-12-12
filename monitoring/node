@@ -8,7 +8,7 @@
 #  $4 TGBOTTOKEN	the tg secret
 #  $5 TGCHATID	the tg secret
 #  $6 ACTION    up or down
-VERSION=0.1.0
+VERSION=0.1.1
 
 HC='\033[0;93m'
 NC='\033[0m'
@@ -37,31 +37,48 @@ echo
 cd ${NODEADM}
 case ${ACTION} in
 	"up")
-		# bring up netdata
+		# for each node, bring up netdata
 		./zss0 exec ${NODE} "
 			cd ~/docker-apps/monitoring/netdata ;
 			TGBOTTOKEN=${TGBOTTOKEN} TGCHATID=${TGCHATID} ./ws up ;
 			"
-		# wait for /etc/netdata/health_alarm_notify.conf ready
+		# wait for netdata /etc/netdata/health_alarm_notify.conf ready
 		while ! ./zss0 exec ${NODE} "docker exec netdata su -s /bin/bash root -c 'chgrp netdata /etc/netdata/health_alarm_notify.conf' ;"
 		do
 			sleep 1
 		done
-		# install packet routing
-		./zss0 exec ${NODE} "
-			sudo ufw allow in from $(dig +short ${COLLECTOR}) to any port 19999 comment 'monitoring-netdata' ;
-			"
 		# issued a test notify
 		./zss0 exec ${NODE} "
 			docker exec netdata su -s /bin/bash netdata -c '/usr/libexec/netdata/plugins.d/alarm-notify.sh test' ;
 			"
+
+		# for each node except collector, bring up rsyslog
+		[ ${NODE} != ${COLLECTOR} ] && \
+		cat << EOF | ./zss0 exec ${NODE} "sudo -n tee /etc/rsyslog.d/daemon-adm-node.conf"
+*.* @${COLLECTOR}
+EOF
+		./zss0 exec ${NODE} "
+			sudo ufw allow in from $(dig +short ${COLLECTOR}) to any port 19999 comment 'monitoring-netdata' ;
+			sudo systemctl restart syslog ;
+			"
+		./zss0 exec ${COLLECTOR} "
+			sudo ufw allow in from $(dig +short ${NODE}) to any port 514 comment 'monitoring-rsyslog' ;
+			"
 		;;
 	"down")
+		# uninstall NODE
 		RULENUM=$(./zss0 exec ${NODE} "sudo ufw status numbered" | grep 'monitoring-netdata' | cut -d']' -f1 | cut -d'[' -f2)
 		./zss0 exec ${NODE} "
 			[ ! -z "${RULENUM}" ] && echo y | sudo ufw delete ${RULENUM} ;
 			cd ~/docker-apps/monitoring/netdata ;
 			TGBOTTOKEN=${TGBOTTOKEN} TGCHATID=${TGCHATID} ./ws down ;
+			sudo rm /etc/rsyslog.d/daemon-adm-node.conf ;
+			sudo systemctl restart syslog ;
+			"
+		# uninstall COLLECTOR
+		RULENUM=$(./zss0 exec ${COLLECTOR} "sudo ufw status numbered" | grep 'monitoring-rsyslog' | cut -d']' -f1 | cut -d'[' -f2)
+		./zss0 exec ${COLLECTOR} "
+			[ ! -z "${RULENUM}" ] && echo y | sudo ufw delete ${RULENUM} ;
 			"
 		;;
 esac

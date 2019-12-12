@@ -6,7 +6,7 @@ case $1 in
 	"app")
 		PROJECTNAME=zerus
 		APPNAME=daemon-adm
-		APPVERSION=0.1.6
+		APPVERSION=0.1.7
 		;;
 	"config")
 		CONFIGKEYS="nodeadm cephadm edges vip logserv if"
@@ -85,6 +85,14 @@ case $1 in
 				NODES="${*:-$(./zss0 env | grep '^- NODES: ' | cut -d: -f2)}"
 				cd - >& /dev/null
 				cd ./monitoring/
+				case ${ACTION} in
+				"up")
+					./collector ${NODEADM} "${LOGSERV}" up
+					;;
+				"down")
+					./collector ${NODEADM} "${LOGSERV}" down
+					;;
+				esac
 				for NODE in ${NODES}
 				do
 					case ${ACTION} in
