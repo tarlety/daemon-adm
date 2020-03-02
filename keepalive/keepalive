@@ -59,7 +59,7 @@ case ${ACTION} in
 		do
 			cd ${NODEADM}
 			./zss0 exec ${NODE} "
-				sudo systemctl stop keepalived ;
+				sudo systemctl disable keepalived ;
 				"
 			cd - >& /dev/null
 		done
