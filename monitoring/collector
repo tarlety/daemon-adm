@@ -5,7 +5,7 @@
 #  $1 NODEADM	the path of node-adm
 #  $2 COLLECTOR	metrics collector
 #  $3 ACTION    up or down
-VERSION=0.1.0
+VERSION=0.1.1
 
 HC='\033[0;93m'
 NC='\033[0m'
@@ -28,23 +28,8 @@ echo
 cd ${NODEADM}
 case ${ACTION} in
 	"up")
-		cat << EOF | ./zss0 exec ${COLLECTOR} "sudo -n tee /etc/rsyslog.d/daemon-adm-collector.conf"
-# provides UDP syslog reception
-module(load="imudp")
-input(type="imudp" port="514")
-# provides TCP syslog reception
-module(load="imtcp")
-input(type="imtcp" port="514")
-EOF
-		./zss0 exec ${COLLECTOR} "
-			sudo sed -i -e 's/^\/usr\/sbin\/logwatch --output mail$/\/usr\/sbin\/logwatch --output mail --hostformat split/' /etc/cron.daily/00logwatch ;
-			"
 		;;
 	"down")
-		./zss0 exec ${COLLECTOR} "
-			sudo rm /etc/rsyslog.d/daemon-adm-collector.conf ;
-			sudo systemctl restart syslog ;
-			"
 		;;
 esac
 cd - >& /dev/null
