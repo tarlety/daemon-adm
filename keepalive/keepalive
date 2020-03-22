@@ -8,7 +8,7 @@
 #  $4 IF	the default if of nodes
 #  $5 PASSWORD	the keepalive password
 #  $6 ACTION    up or down
-VERSION=0.1.0
+VERSION=0.1.1
 
 HC='\033[0;93m'
 NC='\033[0m'
@@ -49,6 +49,7 @@ case ${ACTION} in
 			echo "${CONF}" | ./zss0 exec ${NODE} "sudo -n tee /etc/keepalived/keepalived.conf"
 			./zss0 exec ${NODE} "
 				sudo systemctl stop keepalived ;
+				sudo systemctl enable keepalived ;
 				sudo systemctl start keepalived ;
 				"
 			cd - >& /dev/null
