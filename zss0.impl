@@ -6,7 +6,7 @@ case $1 in
 	"app")
 		PROJECTNAME=zerus
 		APPNAME=daemon-adm
-		APPVERSION=0.1.7
+		APPVERSION=0.1.8
 		;;
 	"config")
 		CONFIGKEYS="nodeadm cephadm edges vip logserv if"
@@ -97,24 +97,26 @@ case $1 in
 				do
 					case ${ACTION} in
 					"up")
-						./node ${NODEADM} "${NODE}" "${LOGSERV}" "${TG_BOTTOKEN}" "${TG_CHATID}" up
+						./node ${NODEADM} "${NODE}" "${LOGSERV}" "${TG_BOTTOKEN}" "${TG_CHATID}" up &
 						;;
 					"down")
-						./node ${NODEADM} "${NODE}" "${LOGSERV}" "${TG_BOTTOKEN}" "${TG_CHATID}" down
+						./node ${NODEADM} "${NODE}" "${LOGSERV}" "${TG_BOTTOKEN}" "${TG_CHATID}" down &
 						;;
 					esac
 				done
+				wait
 				for MGR in ${MGRS}
 				do
 					case ${ACTION} in
 					"up")
-						./ceph ${NODEADM} "${MGR}" "${LOGSERV}" up
+						./ceph ${NODEADM} "${MGR}" "${LOGSERV}" up &
 						;;
 					"down")
-						./ceph ${NODEADM} "${MGR}" "${LOGSERV}" down
+						./ceph ${NODEADM} "${MGR}" "${LOGSERV}" down &
 						;;
 					esac
 				done
+				wait
 				cd - >& /dev/null
 				;;
 			"apply")
