@@ -16,8 +16,8 @@ global_defs {
 vrrp_instance VI_1 {
   interface ${IF}
 
-  state MASTER
-  virtual_router_id 66
+  state $([[ ${EDGES%% *} == $NODE ]] && echo "MASTER" || echo "BACKUP")
+  virtual_router_id $(echo $VIP | cut -d. -f4)
   priority $(echo ${NODE} | cut -d. -f4)
   nopreempt
 
@@ -26,7 +26,7 @@ EOF
 
 for EDGE in $(echo ${EDGES} | sed "s/${NODE}//g")
 do
-	echo "    ${EDGE}"
+  echo "    ${EDGE}"
 done
 
 cat <<EOF
